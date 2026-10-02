@@ -1,13 +1,15 @@
 import { useState } from 'react'
 import { Captions, GripVertical, Plus, Trash2, WandSparkles } from 'lucide-react'
 import type { Subtitle, VideoClip } from '../types'
-import { fadeDuration, formatTime, projectDuration } from '../utils'
+import { clipStartTimes, fadeDuration, formatTime, projectDuration } from '../utils'
 
 interface Props { clips: VideoClip[]; subtitles: Subtitle[]; playhead: number; onSeek: (time: number) => void; onMove: (from: number, to: number) => void; onDelete: (id: string) => void; onToggleTransition: (id: string) => void; onAdd: () => void }
 
 export function Timeline({ clips, subtitles, playhead, onSeek, onMove, onDelete, onToggleTransition, onAdd }: Props) {
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const total = projectDuration(clips)
+  const starts = clipStartTimes(clips)
+  const timelineWidth = Math.max(820, total * 48)
   const timelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if ((e.target as HTMLElement).closest('button, .clip-card')) return
     const rect = e.currentTarget.getBoundingClientRect()
@@ -15,22 +17,25 @@ export function Timeline({ clips, subtitles, playhead, onSeek, onMove, onDelete,
   }
   return <section className="timeline-panel">
     <div className="section-heading"><div><span className="eyebrow">SEQUENCE</span><h2>Timeline</h2></div><button className="icon-label-button" onClick={onAdd}><Plus /> Add clip</button></div>
-    <div className="timeline-scroll" onClick={timelineClick}>
-      <div className="timeline-track" style={{ minWidth: Math.max(820, clips.reduce((s, c) => s + Math.max(150, c.duration * 22), 0) + clips.length * 58) }}>
+    <div className="timeline-scroll">
+      <div className="timeline-track" style={{ minWidth: timelineWidth }}>
         <div className="time-ruler"><span>00:00</span><span>{formatTime(total / 2)}</span><span>{formatTime(total)}</span></div>
-        <div className="clips-row">
-          {clips.map((clip, index) => <div className="clip-with-transition" key={clip.id}>
-            <article className={`clip-card ${dragIndex === index ? 'is-dragging' : ''}`} style={{ width: Math.max(150, clip.duration * 22) }} draggable onDragStart={() => setDragIndex(index)} onDragOver={e => e.preventDefault()} onDrop={() => { if (dragIndex !== null && dragIndex !== index) onMove(dragIndex, index); setDragIndex(null) }} onDragEnd={() => setDragIndex(null)}>
+        <div className="timeline-body" onClick={timelineClick}>
+          <div className="clips-row">
+            {clips.map((clip, index) => <article key={clip.id} className={`clip-card ${dragIndex === index ? 'is-dragging' : ''}`} style={{ left: `${total ? starts[index] / total * 100 : 0}%`, width: `${total ? clip.duration / total * 100 : 0}%`, zIndex: index + 1 }} draggable onDragStart={() => setDragIndex(index)} onDragOver={e => e.preventDefault()} onDrop={() => { if (dragIndex !== null && dragIndex !== index) onMove(dragIndex, index); setDragIndex(null) }} onDragEnd={() => setDragIndex(null)}>
               <img src={clip.thumbnail} alt="" />
               <span className="clip-drag"><GripVertical /></span>
               <button className="clip-delete" title={`Delete ${clip.name}`} onClick={() => onDelete(clip.id)}><Trash2 /></button>
               <div className="clip-meta"><strong>{clip.name.replace(/\.[^.]+$/, '')}</strong><span>{formatTime(clip.duration)}</span></div>
-            </article>
-            {index < clips.length - 1 && <button className={`transition-chip ${clip.transitionAfter === 'fade' ? 'active' : ''}`} onClick={() => onToggleTransition(clip.id)} title="Toggle fade transition"><WandSparkles /><span>{clip.transitionAfter === 'fade' ? `Fade ${fadeDuration(clip, clips[index + 1]).toFixed(1)}s` : 'No fade'}</span></button>}
-          </div>)}
+            </article>)}
+            {clips.slice(0, -1).map((clip, index) => {
+              const fade = clip.transitionAfter === 'fade' ? fadeDuration(clip, clips[index + 1]) : 0
+              return <button key={`transition-${clip.id}`} className={`transition-chip ${fade ? 'active fade-span' : ''}`} style={{ left: `${total ? starts[index + 1] / total * 100 : 0}%`, width: fade ? `${fade / total * 100}%` : undefined }} onClick={() => onToggleTransition(clip.id)} title="Toggle fade transition"><WandSparkles /><span>{fade ? `Fade ${fade.toFixed(1)}s` : 'Cut'}</span></button>
+            })}
+          </div>
+          <div className="subtitle-lane"><span className="subtitle-lane-label"><Captions /></span>{subtitles.map(subtitle => <button key={subtitle.id} title={subtitle.text} onClick={() => onSeek(subtitle.startTime)} style={{ left: `${total ? subtitle.startTime / total * 100 : 0}%`, width: `${total ? Math.max(1.5, (subtitle.endTime - subtitle.startTime) / total * 100) : 0}%` }}>{subtitle.text || 'Untitled subtitle'}</button>)}</div>
+          <div className="playhead" style={{ left: `${total ? (playhead / total) * 100 : 0}%` }}><i /><span /></div>
         </div>
-        <div className="subtitle-lane"><span className="subtitle-lane-label"><Captions /></span>{subtitles.map(subtitle => <button key={subtitle.id} title={subtitle.text} onClick={() => onSeek(subtitle.startTime)} style={{ left: `${total ? subtitle.startTime / total * 100 : 0}%`, width: `${total ? Math.max(1.5, (subtitle.endTime - subtitle.startTime) / total * 100) : 0}%` }}>{subtitle.text || 'Untitled subtitle'}</button>)}</div>
-        <div className="playhead" style={{ left: `${total ? (playhead / total) * 100 : 0}%` }}><i /><span /></div>
       </div>
     </div>
   </section>

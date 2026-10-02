@@ -12,7 +12,7 @@ export interface VideoClip {
 }
 
 export type MusicId = 'none' | 'calm' | 'positive' | 'cinematic'
-export type Resolution = '720p' | '1080p'
+export type Resolution = '480p' | '720p' | '1080p'
 
 export interface MusicTrack {
   id: Exclude<MusicId, 'none'>

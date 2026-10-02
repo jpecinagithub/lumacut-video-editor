@@ -2,6 +2,11 @@ import { Check, Download, LoaderCircle, X } from 'lucide-react'
 import type { ExportPhase, Resolution } from '../types'
 
 const labels: Record<ExportPhase, string> = { idle: '', loading: 'Loading the video engine…', preparing: 'Preparing clips…', transitions: 'Processing transitions…', audio: 'Mixing audio…', encoding: 'Encoding video…', finalizing: 'Finalizing…', done: 'Your video is ready', error: 'Export failed' }
+const resolutions: { id: Resolution; dimensions: string; note?: string }[] = [
+  { id: '480p', dimensions: '854 × 480', note: 'Smaller file' },
+  { id: '720p', dimensions: '1280 × 720' },
+  { id: '1080p', dimensions: '1920 × 1080' },
+]
 
 export function ExportModal({ open, onClose, resolution, setResolution, phase, progress, onExport, downloadUrl, onReset, error }: { open: boolean; onClose: () => void; resolution: Resolution; setResolution: (r: Resolution) => void; phase: ExportPhase; progress: number; onExport: () => void; downloadUrl: string | null; onReset: () => void; error: string | null }) {
   if (!open) return null
@@ -11,7 +16,7 @@ export function ExportModal({ open, onClose, resolution, setResolution, phase, p
       {!working && <button className="modal-close" onClick={onClose}><X /></button>}
       {phase === 'idle' && <>
         <span className="eyebrow">FINAL STEP</span><h2 id="export-title">Export video</h2><p className="modal-lead">Choose a resolution. Your files never leave this device.</p>
-        <fieldset><legend>Resolution</legend><div className="resolution-grid">{(['720p', '1080p'] as Resolution[]).map(r => <button className={resolution === r ? 'active' : ''} onClick={() => setResolution(r)} key={r}><b>{r}</b><span>{r === '1080p' ? '1920 × 1080' : '1280 × 720'}</span>{resolution === r && <Check />}</button>)}</div></fieldset>
+        <fieldset><legend>Resolution</legend><div className="resolution-grid">{resolutions.map(option => <button className={resolution === option.id ? 'active' : ''} onClick={() => setResolution(option.id)} key={option.id}><b>{option.id}</b><span>{option.dimensions}</span>{option.note && <em>{option.note}</em>}{resolution === option.id && <Check />}</button>)}</div></fieldset>
         <div className="format-row"><span>Format</span><b>MP4 · H.264</b></div>
         <button className="button primary full" onClick={onExport}>Start export</button>
       </>}

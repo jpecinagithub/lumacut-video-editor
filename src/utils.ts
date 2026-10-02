@@ -30,7 +30,7 @@ export function clipStartTimes(clips: VideoClip[]) {
 
 export function friendlyError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error)
-  if (/memory|allocation|abort/i.test(message)) return 'Your browser ran out of memory while processing this project. Try 720p or use smaller clips.'
+  if (/memory|allocation|abort/i.test(message)) return 'Your browser ran out of memory while processing this project. Try 480p or use smaller clips.'
   if (/codec|decode|invalid data/i.test(message)) return "We couldn't process one of the videos. Try an MP4 encoded with H.264."
-  return 'The export could not be completed. Check the clips and try again, preferably at 720p.'
+  return 'The export could not be completed. Check the clips and try again, preferably at 480p.'
 }

@@ -21,7 +21,12 @@ export async function exportVideo(options: { clips: VideoClip[]; music: MusicId;
   const { clips, music, musicVolume, videoVolume, resolution, onUpdate } = options
   onUpdate('loading', 3)
   const ffmpeg = await getFFmpeg(p => onUpdate('encoding', 58 + p * 32))
-  const [width, height] = resolution === '1080p' ? [1920, 1080] : [1280, 720]
+  const dimensions: Record<Resolution, [number, number]> = {
+    '480p': [854, 480],
+    '720p': [1280, 720],
+    '1080p': [1920, 1080],
+  }
+  const [width, height] = dimensions[resolution]
   const tempFiles: string[] = []
   try {
     for (let i = 0; i < clips.length; i++) {

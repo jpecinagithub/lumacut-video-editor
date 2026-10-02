@@ -115,6 +115,7 @@ export function useVideoProject() {
       startTime: safeStart,
       endTime: Math.min(projectLength, safeStart + 3),
       position: 'bottom',
+      color: '#FFFFFF',
     }
     setSubtitles(current => [...current, subtitle].sort((a, b) => a.startTime - b.startTime))
     return subtitle.id

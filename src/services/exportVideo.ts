@@ -51,7 +51,7 @@ async function renderSubtitle(subtitle: Subtitle, width: number, height: number)
   const radius = Math.round(fontSize * .32)
   context.fillStyle = 'rgba(0,0,0,.72)'
   context.beginPath(); context.roundRect(x, y, boxWidth, boxHeight, radius); context.fill()
-  context.fillStyle = '#ffffff'
+  context.fillStyle = subtitle.color
   lines.forEach((line, index) => context.fillText(line, width / 2, y + paddingY + lineHeight * (index + .5)))
   const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('Subtitle image could not be created.')), 'image/png'))
   return new Uint8Array(await blob.arrayBuffer())

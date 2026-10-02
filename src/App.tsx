@@ -117,7 +117,7 @@ export default function App() {
             <video ref={videoA} key={active?.id} src={active?.url} playsInline style={{ opacity: 1 - fadeProgress }} />
             {next && <video ref={videoB} key={next.id} src={next.url} playsInline style={{ opacity: fadeProgress }} />}
           </div>
-          {activeSubtitle && <div className={`preview-subtitle ${activeSubtitle.position}`}><span>{activeSubtitle.text}</span></div>}
+          {activeSubtitle && <div className={`preview-subtitle ${activeSubtitle.position}`}><span style={{ color: activeSubtitle.color }}>{activeSubtitle.text}</span></div>}
           <span className="canvas-size">16:9</span>
         </div>
         <div className="player-controls">

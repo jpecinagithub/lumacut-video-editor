@@ -33,7 +33,7 @@ export function Timeline({ clips, subtitles, playhead, onSeek, onMove, onDelete,
               return <button key={`transition-${clip.id}`} className={`transition-chip ${fade ? 'active fade-span' : ''}`} style={{ left: `${total ? starts[index + 1] / total * 100 : 0}%`, width: fade ? `${fade / total * 100}%` : undefined }} onClick={() => onToggleTransition(clip.id)} title="Toggle fade transition"><WandSparkles /><span>{fade ? `Fade ${fade.toFixed(1)}s` : 'Cut'}</span></button>
             })}
           </div>
-          <div className="subtitle-lane"><span className="subtitle-lane-label"><Captions /></span>{subtitles.map(subtitle => <button key={subtitle.id} title={subtitle.text} onClick={() => onSeek(subtitle.startTime)} style={{ left: `${total ? subtitle.startTime / total * 100 : 0}%`, width: `${total ? Math.max(1.5, (subtitle.endTime - subtitle.startTime) / total * 100) : 0}%` }}>{subtitle.text || 'Untitled subtitle'}</button>)}</div>
+          <div className="subtitle-lane"><span className="subtitle-lane-label"><Captions /></span>{subtitles.map(subtitle => <button key={subtitle.id} title={subtitle.text} onClick={() => onSeek(subtitle.startTime)} style={{ left: `${total ? subtitle.startTime / total * 100 : 0}%`, width: `${total ? Math.max(1.5, (subtitle.endTime - subtitle.startTime) / total * 100) : 0}%`, borderColor: subtitle.color, color: subtitle.color }}>{subtitle.text || 'Untitled subtitle'}</button>)}</div>
           <div className="playhead" style={{ left: `${total ? (playhead / total) * 100 : 0}%` }}><i /><span /></div>
         </div>
       </div>

@@ -21,6 +21,7 @@ export interface Subtitle {
   startTime: number
   endTime: number
   position: SubtitlePosition
+  color: string
 }
 
 export interface MusicTrack {

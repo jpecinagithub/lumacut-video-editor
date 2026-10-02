@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { GripVertical, Plus, Trash2, WandSparkles } from 'lucide-react'
-import type { VideoClip } from '../types'
+import { Captions, GripVertical, Plus, Trash2, WandSparkles } from 'lucide-react'
+import type { Subtitle, VideoClip } from '../types'
 import { fadeDuration, formatTime, projectDuration } from '../utils'
 
-interface Props { clips: VideoClip[]; playhead: number; onSeek: (time: number) => void; onMove: (from: number, to: number) => void; onDelete: (id: string) => void; onToggleTransition: (id: string) => void; onAdd: () => void }
+interface Props { clips: VideoClip[]; subtitles: Subtitle[]; playhead: number; onSeek: (time: number) => void; onMove: (from: number, to: number) => void; onDelete: (id: string) => void; onToggleTransition: (id: string) => void; onAdd: () => void }
 
-export function Timeline({ clips, playhead, onSeek, onMove, onDelete, onToggleTransition, onAdd }: Props) {
+export function Timeline({ clips, subtitles, playhead, onSeek, onMove, onDelete, onToggleTransition, onAdd }: Props) {
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const total = projectDuration(clips)
   const timelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -29,6 +29,7 @@ export function Timeline({ clips, playhead, onSeek, onMove, onDelete, onToggleTr
             {index < clips.length - 1 && <button className={`transition-chip ${clip.transitionAfter === 'fade' ? 'active' : ''}`} onClick={() => onToggleTransition(clip.id)} title="Toggle fade transition"><WandSparkles /><span>{clip.transitionAfter === 'fade' ? `Fade ${fadeDuration(clip, clips[index + 1]).toFixed(1)}s` : 'No fade'}</span></button>}
           </div>)}
         </div>
+        <div className="subtitle-lane"><span className="subtitle-lane-label"><Captions /></span>{subtitles.map(subtitle => <button key={subtitle.id} title={subtitle.text} onClick={() => onSeek(subtitle.startTime)} style={{ left: `${total ? subtitle.startTime / total * 100 : 0}%`, width: `${total ? Math.max(1.5, (subtitle.endTime - subtitle.startTime) / total * 100) : 0}%` }}>{subtitle.text || 'Untitled subtitle'}</button>)}</div>
         <div className="playhead" style={{ left: `${total ? (playhead / total) * 100 : 0}%` }}><i /><span /></div>
       </div>
     </div>

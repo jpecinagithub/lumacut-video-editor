@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { MusicId, Resolution, VideoClip } from '../types'
+import type { MusicId, Resolution, Subtitle, VideoClip } from '../types'
 import { projectDuration } from '../utils'
 
 const ACCEPTED = ['video/mp4', 'video/quicktime', 'video/webm']
@@ -74,6 +74,7 @@ export function useVideoProject() {
   const [musicVolume, setMusicVolume] = useState(30)
   const [videoVolume, setVideoVolume] = useState(100)
   const [resolution, setResolution] = useState<Resolution>('1080p')
+  const [subtitles, setSubtitles] = useState<Subtitle[]>([])
   const [isImporting, setIsImporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const clipsRef = useRef(clips)
@@ -106,6 +107,22 @@ export function useVideoProject() {
 
   const toggleTransition = useCallback((id: string) => setClips(current => current.map(c => c.id === id ? { ...c, transitionAfter: c.transitionAfter === 'fade' ? 'none' : 'fade' } : c)), [])
 
+  const addSubtitle = useCallback((startTime: number, projectLength: number) => {
+    const safeStart = Math.max(0, Math.min(startTime, Math.max(0, projectLength - .2)))
+    const subtitle: Subtitle = {
+      id: crypto.randomUUID(),
+      text: 'New subtitle',
+      startTime: safeStart,
+      endTime: Math.min(projectLength, safeStart + 3),
+      position: 'bottom',
+    }
+    setSubtitles(current => [...current, subtitle].sort((a, b) => a.startTime - b.startTime))
+    return subtitle.id
+  }, [])
+
+  const updateSubtitle = useCallback((id: string, changes: Partial<Omit<Subtitle, 'id'>>) => setSubtitles(current => current.map(subtitle => subtitle.id === id ? { ...subtitle, ...changes } : subtitle).sort((a, b) => a.startTime - b.startTime)), [])
+  const removeSubtitle = useCallback((id: string) => setSubtitles(current => current.filter(subtitle => subtitle.id !== id)), [])
+
   const loadDemo = useCallback(async () => {
     if (clips.length) return
     setIsImporting(true); setError(null)
@@ -125,5 +142,5 @@ export function useVideoProject() {
   const totalSize = useMemo(() => clips.reduce((n, c) => n + c.size, 0), [clips])
   const duration = useMemo(() => projectDuration(clips), [clips])
 
-  return { clips, music, setMusic, musicVolume, setMusicVolume, videoVolume, setVideoVolume, resolution, setResolution, isImporting, error, setError, addFiles, removeClip, moveClip, toggleTransition, loadDemo, totalSize, duration }
+  return { clips, subtitles, addSubtitle, updateSubtitle, removeSubtitle, music, setMusic, musicVolume, setMusicVolume, videoVolume, setVideoVolume, resolution, setResolution, isImporting, error, setError, addFiles, removeClip, moveClip, toggleTransition, loadDemo, totalSize, duration }
 }

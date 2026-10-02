@@ -3,6 +3,7 @@ import { ArrowUpRight, Film, RotateCcw, ShieldCheck, SkipBack, Volume2, VolumeX 
 import { VideoUploader } from './components/VideoUploader'
 import { Timeline } from './components/Timeline'
 import { MusicPanel, tracks } from './components/MusicPanel'
+import { SubtitlePanel } from './components/SubtitlePanel'
 import { ExportModal } from './components/ExportModal'
 import { useVideoProject } from './hooks/useVideoProject'
 import { clipStartTimes, formatTime, friendlyError, projectDuration } from './utils'
@@ -37,6 +38,7 @@ export default function App() {
   const localTime = active ? Math.max(0, playhead - starts[activeIndex]) : 0
   const fadeLength = active && next && active.transitionAfter === 'fade' ? Math.min(3, active.duration / 2, next.duration / 2) : 0
   const fadeProgress = fadeLength ? Math.max(0, Math.min(1, (localTime - (active.duration - fadeLength)) / fadeLength)) : 0
+  const activeSubtitle = project.subtitles.find(subtitle => subtitle.text.trim() && playhead >= subtitle.startTime && playhead < subtitle.endTime)
 
   useEffect(() => {
     const sync = (el: HTMLVideoElement | null, time: number, shouldPlay: boolean) => {
@@ -89,7 +91,7 @@ export default function App() {
   const startExport = async () => {
     setExportError(null); setDownloadUrl(current => { if (current) URL.revokeObjectURL(current); return null })
     try {
-      const url = await exportVideo({ clips: project.clips, music: project.music, musicVolume: project.musicVolume, videoVolume: project.videoVolume, resolution: project.resolution, onUpdate: (phase, progress) => { setExportPhase(phase); setExportProgress(progress) } })
+      const url = await exportVideo({ clips: project.clips, subtitles: project.subtitles, music: project.music, musicVolume: project.musicVolume, videoVolume: project.videoVolume, resolution: project.resolution, onUpdate: (phase, progress) => { setExportPhase(phase); setExportProgress(progress) } })
       setDownloadUrl(url); setExportPhase('done')
     } catch (error) { setExportError(friendlyError(error)); setExportPhase('error') }
   }
@@ -115,6 +117,7 @@ export default function App() {
             <video ref={videoA} key={active?.id} src={active?.url} playsInline style={{ opacity: 1 - fadeProgress }} />
             {next && <video ref={videoB} key={next.id} src={next.url} playsInline style={{ opacity: fadeProgress }} />}
           </div>
+          {activeSubtitle && <div className={`preview-subtitle ${activeSubtitle.position}`}><span>{activeSubtitle.text}</span></div>}
           <span className="canvas-size">16:9</span>
         </div>
         <div className="player-controls">
@@ -131,11 +134,12 @@ export default function App() {
       <aside className="project-sidebar">
         <div className="sidebar-title"><span className="eyebrow">PROJECT</span><h2>Finishing touches</h2></div>
         <MusicPanel selected={project.music} onSelect={project.setMusic} musicVolume={project.musicVolume} setMusicVolume={project.setMusicVolume} videoVolume={project.videoVolume} setVideoVolume={project.setVideoVolume} />
-        <div className="project-info"><div><span>Duration</span><b>{formatTime(total)}</b></div><div><span>Clips</span><b>{project.clips.length}</b></div><div><span>Music</span><b>{project.music === 'none' ? 'None' : project.music[0].toUpperCase() + project.music.slice(1)}</b></div><div><span>Transitions</span><b>{project.clips.filter(c => c.transitionAfter === 'fade').length} fades</b></div></div>
+        <SubtitlePanel subtitles={project.subtitles} duration={total} playhead={playhead} onAdd={() => { setPlaying(false); project.addSubtitle(playhead, total) }} onUpdate={project.updateSubtitle} onDelete={project.removeSubtitle} onSeek={seek} />
+        <div className="project-info"><div><span>Duration</span><b>{formatTime(total)}</b></div><div><span>Clips</span><b>{project.clips.length}</b></div><div><span>Music</span><b>{project.music === 'none' ? 'None' : project.music[0].toUpperCase() + project.music.slice(1)}</b></div><div><span>Subtitles</span><b>{project.subtitles.length || 'None'}</b></div></div>
         <div className="local-badge"><ShieldCheck /><span><b>Browser-only editing</b>No uploads. No waiting for servers.</span></div>
       </aside>
 
-      <Timeline clips={project.clips} playhead={playhead} onSeek={seek} onMove={project.moveClip} onDelete={project.removeClip} onToggleTransition={project.toggleTransition} onAdd={() => fileInput.current?.click()} />
+      <Timeline clips={project.clips} subtitles={project.subtitles} playhead={playhead} onSeek={seek} onMove={project.moveClip} onDelete={project.removeClip} onToggleTransition={project.toggleTransition} onAdd={() => fileInput.current?.click()} />
       <input ref={fileInput} hidden type="file" multiple accept="video/mp4,video/quicktime,video/webm,.mov" onChange={e => e.target.files && project.addFiles(Array.from(e.target.files))} />
     </div>}
 

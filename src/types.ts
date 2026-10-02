@@ -13,6 +13,15 @@ export interface VideoClip {
 
 export type MusicId = 'none' | 'calm' | 'positive' | 'cinematic'
 export type Resolution = '480p' | '720p' | '1080p'
+export type SubtitlePosition = 'top' | 'center' | 'bottom'
+
+export interface Subtitle {
+  id: string
+  text: string
+  startTime: number
+  endTime: number
+  position: SubtitlePosition
+}
 
 export interface MusicTrack {
   id: Exclude<MusicId, 'none'>

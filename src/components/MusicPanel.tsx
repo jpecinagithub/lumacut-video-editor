@@ -25,7 +25,7 @@ export function MusicPanel({ selected, onSelect, musicVolume, setMusicVolume, vi
       <button className="round-button" onClick={e => { e.stopPropagation(); preview(track) }} aria-label={`Preview ${track.name}`}>{previewing === track.id ? <Pause /> : <Play />}</button>
     </article>)}</div>
     <div className="mixers">
-      <label><span><b>Music volume</b><output>{musicVolume}%</output></span><input type="range" min="0" max="100" value={musicVolume} onChange={e => setMusicVolume(+e.target.value)} disabled={selected === 'none'} /></label>
+      <label><span><b>Music volume</b><output>{musicVolume}%</output></span><input type="range" min="0" max="100" value={musicVolume} onChange={e => setMusicVolume(+e.target.value)} disabled={selected === 'none'} />{selected === 'none' && <small className="mixer-hint">Select a music track above to enable volume control</small>}</label>
       <label><span><b>Original video audio</b><output>{videoVolume}%</output></span><input type="range" min="0" max="100" value={videoVolume} onChange={e => setVideoVolume(+e.target.value)} /></label>
     </div>
   </section>

@@ -27,6 +27,7 @@ export default function App() {
   const videoB = useRef<HTMLVideoElement>(null)
   const musicAudio = useRef<HTMLAudioElement>(null)
   const animation = useRef<number>(0)
+  const demoRequested = useRef(false)
   const startedAt = useRef(0)
   const initialTime = useRef(0)
   const total = projectDuration(project.clips)
@@ -78,6 +79,12 @@ export default function App() {
   useEffect(() => { if (playhead > total) setPlayhead(0) }, [playhead, total])
 
   useEffect(() => {
+    if (demoRequested.current || new URLSearchParams(window.location.search).get('demo') !== '1') return
+    demoRequested.current = true
+    void project.loadDemo()
+  }, [project.loadDemo])
+
+  useEffect(() => {
     const context = document.modelContext
     if (!context?.registerTool) return
     const lifecycle = new AbortController()
@@ -102,7 +109,7 @@ export default function App() {
     <header className="app-header">
       <div className="brand"><span className="brand-mark"><Film /></span><b>LumaCut</b><em>STUDIO</em></div>
       <div className="project-name">
-        <span>Project</span>
+        <a className="demo-project-link" href="?demo=1" target="_blank" rel="noreferrer" aria-label="Open demo project in a new tab">Demo Project</a>
         <details className="author-menu">
           <summary><UserRound />Author</summary>
           <div className="author-card">

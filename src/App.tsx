@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowUpRight, Film, RotateCcw, ShieldCheck, SkipBack, Volume2, VolumeX } from 'lucide-react'
+import { ArrowUpRight, Film, Mail, RotateCcw, ShieldCheck, SkipBack, UserRound, Volume2, VolumeX } from 'lucide-react'
 import { VideoUploader } from './components/VideoUploader'
 import { Timeline } from './components/Timeline'
 import { MusicPanel, tracks } from './components/MusicPanel'
@@ -101,7 +101,19 @@ export default function App() {
   return <main>
     <header className="app-header">
       <div className="brand"><span className="brand-mark"><Film /></span><b>LumaCut</b><em>STUDIO</em></div>
-      <div className="project-name"><span>Project</span><input aria-label="Project name" defaultValue="Untitled video" /></div>
+      <div className="project-name">
+        <span>Project</span>
+        <details className="author-menu">
+          <summary><UserRound />Author</summary>
+          <div className="author-card">
+            <span className="eyebrow">AUTHOR · AUTOR</span>
+            <strong>Jon Peciña</strong>
+            <p><b>ES</b> Soy el creador de LumaCut, un editor de vídeo privado que funciona directamente en tu navegador.</p>
+            <p><b>EN</b> I’m the creator of LumaCut, a private video editor that runs directly in your browser.</p>
+            <a href="mailto:jpecina@gmail.com"><Mail />jpecina@gmail.com</a>
+          </div>
+        </details>
+      </div>
       <button className="button primary export-button" disabled={!project.clips.length} onClick={() => { setExportPhase('idle'); setExportOpen(true) }}>Export video <ArrowUpRight /></button>
     </header>
 

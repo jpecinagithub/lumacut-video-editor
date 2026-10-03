@@ -6,6 +6,7 @@ import { MusicPanel, tracks } from './components/MusicPanel'
 import { SubtitlePanel } from './components/SubtitlePanel'
 import { ExportModal } from './components/ExportModal'
 import { useVideoProject } from './hooks/useVideoProject'
+import { useIsMobile } from './hooks/useIsMobile'
 import { clipStartTimes, formatTime, friendlyError, projectDuration } from './utils'
 import { exportVideo } from './services/exportVideo'
 import type { ExportPhase } from './types'
@@ -14,6 +15,9 @@ declare global { interface Document { modelContext?: { registerTool: (tool: unkn
 
 export default function App() {
   const project = useVideoProject()
+  const isMobile = useIsMobile()
+  const { resolution, setResolution } = project
+  useEffect(() => { if (isMobile && resolution !== '480p') setResolution('480p') }, [isMobile, resolution, setResolution])
   const [playhead, setPlayhead] = useState(0)
   const [playing, setPlaying] = useState(false)
   const [playerMuted, setPlayerMuted] = useState(false)
@@ -163,7 +167,6 @@ export default function App() {
     </div>}
 
     {(large || project.error) && <div className={`toast ${project.error ? 'error' : ''}`}><b>{project.error ? 'Import issue' : 'Large project'}</b><span>{project.error ?? 'Processing large videos in your browser may require significant memory and can take longer.'}</span><button onClick={() => project.setError(null)}>×</button></div>}
-    <div className="mobile-message"><Film /><h1>LumaCut works best on a larger screen</h1><p>Open this editor on a desktop or tablet to arrange clips and export your video.</p></div>
-    <ExportModal open={exportOpen} onClose={() => setExportOpen(false)} resolution={project.resolution} setResolution={project.setResolution} phase={exportPhase} progress={exportProgress} onExport={startExport} downloadUrl={downloadUrl} onReset={resetProject} error={exportError} />
+    <ExportModal open={exportOpen} onClose={() => setExportOpen(false)} resolution={project.resolution} setResolution={project.setResolution} phase={exportPhase} progress={exportProgress} onExport={startExport} downloadUrl={downloadUrl} onReset={resetProject} error={exportError} isMobile={isMobile} />
   </main>
 }

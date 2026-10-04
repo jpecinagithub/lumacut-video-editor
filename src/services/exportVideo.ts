@@ -57,8 +57,8 @@ async function renderSubtitle(subtitle: Subtitle, width: number, height: number)
   return new Uint8Array(await blob.arrayBuffer())
 }
 
-export async function exportVideo(options: { clips: VideoClip[]; subtitles: Subtitle[]; music: MusicId; musicVolume: number; videoVolume: number; resolution: Resolution; onUpdate: (phase: ExportPhase, progress: number) => void }) {
-  const { clips, subtitles, music, musicVolume, videoVolume, resolution, onUpdate } = options
+export async function exportVideo(options: { clips: VideoClip[]; subtitles: Subtitle[]; music: MusicId; customAudioFile: File | null; musicVolume: number; videoVolume: number; resolution: Resolution; onUpdate: (phase: ExportPhase, progress: number) => void }) {
+  const { clips, subtitles, music, customAudioFile, musicVolume, videoVolume, resolution, onUpdate } = options
   onUpdate('loading', 3)
   const ffmpeg = await getFFmpeg(p => onUpdate('encoding', 58 + p * 32))
   const dimensions: Record<Resolution, [number, number]> = {
@@ -115,12 +115,16 @@ export async function exportVideo(options: { clips: VideoClip[]; subtitles: Subt
     if (code !== 0) throw new Error('Transition processing failed')
 
     let finalFile = joined
-    if (music !== 'none') {
+    if (music !== 'none' && (music !== 'custom' || customAudioFile)) {
       onUpdate('audio', 76)
-      const musicFile = `music-${music}.wav`
+      const ext = music === 'custom' && customAudioFile?.name.toLowerCase().endsWith('.mp3') ? 'mp3' : 'wav'
+      const musicFile = `music-${music}.${ext}`
       const output = 'mixed.mp4'
       tempFiles.push(musicFile, output)
-      await ffmpeg.writeFile(musicFile, await fetchFile(`/music/${music}.wav`))
+      const audioData = music === 'custom' && customAudioFile
+        ? await fetchFile(customAudioFile)
+        : await fetchFile(`/music/${music}.wav`)
+      await ffmpeg.writeFile(musicFile, audioData)
       const duration = projectDuration(clips)
       const fadeStart = Math.max(0, duration - 1.5)
       const musicFilter = `[1:a]atrim=0:${duration.toFixed(3)},asetpts=PTS-STARTPTS,volume=${musicVolume / 100},afade=t=out:st=${fadeStart.toFixed(3)}:d=1.5[m];[0:a][m]amix=inputs=2:duration=first:dropout_transition=2[a]`

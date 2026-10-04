@@ -59,9 +59,9 @@ export default function App() {
   useEffect(() => {
     const audio = musicAudio.current
     if (!audio) return
-    const track = tracks.find(t => t.id === project.music)
-    if (!track) { audio.pause(); return }
-    if (!audio.src.endsWith(track.src)) audio.src = track.src
+    const trackSrc = project.music === 'custom' ? project.customAudio?.url : tracks.find(t => t.id === project.music)?.src
+    if (!trackSrc) { audio.pause(); return }
+    if (!audio.src.endsWith(trackSrc)) audio.src = trackSrc
     audio.volume = playerMuted ? 0 : project.musicVolume / 100
     if (Math.abs(audio.currentTime - (playhead % Math.max(audio.duration || 12, 1))) > .4 && Number.isFinite(audio.duration)) audio.currentTime = playhead % audio.duration
     if (playing) audio.play().catch(() => undefined); else audio.pause()
@@ -102,7 +102,7 @@ export default function App() {
   const startExport = async () => {
     setExportError(null); setDownloadUrl(current => { if (current) URL.revokeObjectURL(current); return null })
     try {
-      const url = await exportVideo({ clips: project.clips, subtitles: project.subtitles, music: project.music, musicVolume: project.musicVolume, videoVolume: project.videoVolume, resolution: project.resolution, onUpdate: (phase, progress) => { setExportPhase(phase); setExportProgress(progress) } })
+      const url = await exportVideo({ clips: project.clips, subtitles: project.subtitles, music: project.music, customAudioFile: project.customAudio?.file ?? null, musicVolume: project.musicVolume, videoVolume: project.videoVolume, resolution: project.resolution, onUpdate: (phase, progress) => { setExportPhase(phase); setExportProgress(progress) } })
       setDownloadUrl(url); setExportPhase('done')
     } catch (error) { setExportError(friendlyError(error)); setExportPhase('error') }
   }
@@ -156,7 +156,7 @@ export default function App() {
 
       <aside className="project-sidebar">
         <div className="sidebar-title"><span className="eyebrow">PROJECT</span><h2>Finishing touches</h2></div>
-        <MusicPanel selected={project.music} onSelect={project.setMusic} musicVolume={project.musicVolume} setMusicVolume={project.setMusicVolume} videoVolume={project.videoVolume} setVideoVolume={project.setVideoVolume} />
+        <MusicPanel selected={project.music} onSelect={project.setMusic} musicVolume={project.musicVolume} setMusicVolume={project.setMusicVolume} videoVolume={project.videoVolume} setVideoVolume={project.setVideoVolume} customAudio={project.customAudio} onUploadAudio={project.setCustomAudioFile} onClearAudio={project.clearCustomAudio} />
         <SubtitlePanel subtitles={project.subtitles} duration={total} playhead={playhead} onAdd={() => { setPlaying(false); project.addSubtitle(playhead, total) }} onUpdate={project.updateSubtitle} onDelete={project.removeSubtitle} onSeek={seek} />
         <div className="project-info"><div><span>Duration</span><b>{formatTime(total)}</b></div><div><span>Clips</span><b>{project.clips.length}</b></div><div><span>Music</span><b>{project.music === 'none' ? 'None' : project.music[0].toUpperCase() + project.music.slice(1)}</b></div><div><span>Subtitles</span><b>{project.subtitles.length || 'None'}</b></div></div>
         <div className="local-badge"><ShieldCheck /><span><b>Browser-only editing</b>No uploads. No waiting for servers.</span></div>

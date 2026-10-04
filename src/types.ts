@@ -11,7 +11,7 @@ export interface VideoClip {
   transitionAfter: TransitionType
 }
 
-export type MusicId = 'none' | 'calm' | 'positive' | 'cinematic'
+export type MusicId = 'none' | 'calm' | 'positive' | 'cinematic' | 'custom'
 export type Resolution = '480p' | '720p' | '1080p'
 export type SubtitlePosition = 'top' | 'center' | 'bottom'
 
@@ -25,11 +25,17 @@ export interface Subtitle {
 }
 
 export interface MusicTrack {
-  id: Exclude<MusicId, 'none'>
+  id: Exclude<MusicId, 'none' | 'custom'>
   name: string
   description: string
   src: string
   tone: string
+}
+
+export interface CustomAudio {
+  file: File
+  url: string
+  name: string
 }
 
 export type ExportPhase = 'idle' | 'loading' | 'preparing' | 'transitions' | 'audio' | 'encoding' | 'finalizing' | 'done' | 'error'

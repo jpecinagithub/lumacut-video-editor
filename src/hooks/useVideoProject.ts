@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { MusicId, Resolution, Subtitle, VideoClip } from '../types'
+import type { CustomAudio, MusicId, Resolution, Subtitle, VideoClip } from '../types'
 import { projectDuration } from '../utils'
 
 const ACCEPTED = ['video/mp4', 'video/quicktime', 'video/webm']
@@ -75,12 +75,18 @@ export function useVideoProject() {
   const [videoVolume, setVideoVolume] = useState(100)
   const [resolution, setResolution] = useState<Resolution>('1080p')
   const [subtitles, setSubtitles] = useState<Subtitle[]>([])
+  const [customAudio, setCustomAudio] = useState<CustomAudio | null>(null)
   const [isImporting, setIsImporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const clipsRef = useRef(clips)
   clipsRef.current = clips
+  const customAudioRef = useRef(customAudio)
+  customAudioRef.current = customAudio
 
-  useEffect(() => () => clipsRef.current.forEach(clip => URL.revokeObjectURL(clip.url)), [])
+  useEffect(() => () => {
+    clipsRef.current.forEach(clip => URL.revokeObjectURL(clip.url))
+    if (customAudioRef.current) URL.revokeObjectURL(customAudioRef.current.url)
+  }, [])
 
   const addFiles = useCallback(async (files: File[]) => {
     setIsImporting(true); setError(null)
@@ -124,6 +130,26 @@ export function useVideoProject() {
   const updateSubtitle = useCallback((id: string, changes: Partial<Omit<Subtitle, 'id'>>) => setSubtitles(current => current.map(subtitle => subtitle.id === id ? { ...subtitle, ...changes } : subtitle).sort((a, b) => a.startTime - b.startTime)), [])
   const removeSubtitle = useCallback((id: string) => setSubtitles(current => current.filter(subtitle => subtitle.id !== id)), [])
 
+  const setCustomAudioFile = useCallback((file: File) => {
+    if (!/audio\/(mpeg|wav|x-wav)/.test(file.type) && !/\.(mp3|wav)$/i.test(file.name)) {
+      setError('Please choose an MP3 or WAV audio file.')
+      return
+    }
+    setCustomAudio(current => {
+      if (current) URL.revokeObjectURL(current.url)
+      return { file, url: URL.createObjectURL(file), name: file.name }
+    })
+    setMusic('custom')
+  }, [])
+
+  const clearCustomAudio = useCallback(() => {
+    setCustomAudio(current => {
+      if (current) URL.revokeObjectURL(current.url)
+      return null
+    })
+    setMusic(current => (current === 'custom' ? 'none' : current))
+  }, [])
+
   const loadDemo = useCallback(async () => {
     if (clips.length) return
     setIsImporting(true); setError(null)
@@ -143,5 +169,5 @@ export function useVideoProject() {
   const totalSize = useMemo(() => clips.reduce((n, c) => n + c.size, 0), [clips])
   const duration = useMemo(() => projectDuration(clips), [clips])
 
-  return { clips, subtitles, addSubtitle, updateSubtitle, removeSubtitle, music, setMusic, musicVolume, setMusicVolume, videoVolume, setVideoVolume, resolution, setResolution, isImporting, error, setError, addFiles, removeClip, moveClip, toggleTransition, loadDemo, totalSize, duration }
+  return { clips, subtitles, addSubtitle, updateSubtitle, removeSubtitle, music, setMusic, customAudio, setCustomAudioFile, clearCustomAudio, musicVolume, setMusicVolume, videoVolume, setVideoVolume, resolution, setResolution, isImporting, error, setError, addFiles, removeClip, moveClip, toggleTransition, loadDemo, totalSize, duration }
 }

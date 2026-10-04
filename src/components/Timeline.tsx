@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { Captions, GripVertical, Plus, Trash2, WandSparkles } from 'lucide-react'
 import type { Subtitle, VideoClip } from '../types'
-import { clipStartTimes, fadeDuration, formatTime, projectDuration } from '../utils'
+import { clipStartTimes, formatTime, projectDuration, TRANSITION_LABELS, transitionDuration } from '../utils'
 
-interface Props { clips: VideoClip[]; subtitles: Subtitle[]; playhead: number; onSeek: (time: number) => void; onMove: (from: number, to: number) => void; onDelete: (id: string) => void; onToggleTransition: (id: string) => void; onAdd: () => void }
+interface Props { clips: VideoClip[]; subtitles: Subtitle[]; playhead: number; onSeek: (time: number) => void; onMove: (from: number, to: number) => void; onDelete: (id: string) => void; onCycleTransition: (id: string) => void; onAdd: () => void }
 
-export function Timeline({ clips, subtitles, playhead, onSeek, onMove, onDelete, onToggleTransition, onAdd }: Props) {
+export function Timeline({ clips, subtitles, playhead, onSeek, onMove, onDelete, onCycleTransition, onAdd }: Props) {
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const total = projectDuration(clips)
   const starts = clipStartTimes(clips)
@@ -29,8 +29,10 @@ export function Timeline({ clips, subtitles, playhead, onSeek, onMove, onDelete,
               <div className="clip-meta"><strong>{clip.name.replace(/\.[^.]+$/, '')}</strong><span>{formatTime(clip.duration)}</span></div>
             </article>)}
             {clips.slice(0, -1).map((clip, index) => {
-              const fade = clip.transitionAfter === 'fade' ? fadeDuration(clip, clips[index + 1]) : 0
-              return <button key={`transition-${clip.id}`} className={`transition-chip ${fade ? 'active fade-span' : ''}`} style={{ left: `${total ? starts[index + 1] / total * 100 : 0}%`, width: fade ? `${fade / total * 100}%` : undefined }} onClick={() => onToggleTransition(clip.id)} title="Toggle fade transition"><WandSparkles /><span>{fade ? `Fade ${fade.toFixed(1)}s` : 'Cut'}</span></button>
+              const type = clip.transitionAfter
+              const d = type === 'none' ? 0 : transitionDuration(clip, clips[index + 1])
+              const label = type === 'none' ? 'Cut' : `${TRANSITION_LABELS[type]} ${d.toFixed(1)}s`
+              return <button key={`transition-${clip.id}`} className={`transition-chip ${d ? 'active transition-span' : ''}`} style={{ left: `${total ? starts[index + 1] / total * 100 : 0}%`, width: d ? `${d / total * 100}%` : undefined }} onClick={() => onCycleTransition(clip.id)} title="Cycle transition"><WandSparkles /><span>{label}</span></button>
             })}
           </div>
           <div className="subtitle-lane"><span className="subtitle-lane-label"><Captions /></span>{subtitles.map(subtitle => <button key={subtitle.id} title={subtitle.text} onClick={() => onSeek(subtitle.startTime)} style={{ left: `${total ? subtitle.startTime / total * 100 : 0}%`, width: `${total ? Math.max(1.5, (subtitle.endTime - subtitle.startTime) / total * 100) : 0}%`, borderColor: subtitle.color, color: subtitle.color }}>{subtitle.text || 'Untitled subtitle'}</button>)}</div>

@@ -1,4 +1,4 @@
-import type { VideoClip } from './types'
+import type { TransitionType, VideoClip } from './types'
 
 export function formatTime(value: number) {
   if (!Number.isFinite(value)) return '00:00'
@@ -11,11 +11,21 @@ export function formatTime(value: number) {
     : `${String(minutes).padStart(2, '0')}:${String(rest).padStart(2, '0')}`
 }
 
-export const fadeDuration = (a: VideoClip, b: VideoClip) =>
-  Math.min(3, Math.max(0.15, a.duration / 2), Math.max(0.15, b.duration / 2))
+export const TRANSITION_ORDER: TransitionType[] = ['none', 'fade', 'fadeblack', 'fadewhite', 'wipeleft', 'slideleft']
+
+export const TRANSITION_LABELS: Record<Exclude<TransitionType, 'none'>, string> = {
+  fade: 'Fade',
+  fadeblack: 'Black',
+  fadewhite: 'White',
+  wipeleft: 'Wipe',
+  slideleft: 'Slide',
+}
+
+export const transitionDuration = (a: VideoClip, b: VideoClip) =>
+  Math.min(2, Math.max(0.15, a.duration / 2), Math.max(0.15, b.duration / 2))
 
 export function projectDuration(clips: VideoClip[]) {
-  return Math.max(0, clips.reduce((sum, clip) => sum + clip.duration, 0) - clips.slice(0, -1).reduce((sum, clip, index) => sum + (clip.transitionAfter === 'fade' ? fadeDuration(clip, clips[index + 1]) : 0), 0))
+  return Math.max(0, clips.reduce((sum, clip) => sum + clip.duration, 0) - clips.slice(0, -1).reduce((sum, clip, index) => sum + (clip.transitionAfter === 'none' ? 0 : transitionDuration(clip, clips[index + 1])), 0))
 }
 
 export function clipStartTimes(clips: VideoClip[]) {
@@ -23,7 +33,7 @@ export function clipStartTimes(clips: VideoClip[]) {
   return clips.map((clip, index) => {
     const start = cursor
     cursor += clip.duration
-    if (clip.transitionAfter === 'fade' && clips[index + 1]) cursor -= fadeDuration(clip, clips[index + 1])
+    if (clip.transitionAfter !== 'none' && clips[index + 1]) cursor -= transitionDuration(clip, clips[index + 1])
     return start
   })
 }

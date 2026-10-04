@@ -1,7 +1,7 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg'
 import { fetchFile, toBlobURL } from '@ffmpeg/util'
 import type { MusicId, Resolution, Subtitle, VideoClip, ExportPhase } from '../types'
-import { fadeDuration, projectDuration } from '../utils'
+import { projectDuration, transitionDuration } from '../utils'
 
 let instance: FFmpeg | null = null
 
@@ -95,10 +95,10 @@ export async function exportVideo(options: { clips: VideoClip[]; subtitles: Subt
     const filters: string[] = []
     for (let i = 1; i < clips.length; i++) {
       const previous = clips[i - 1]
-      if (previous.transitionAfter === 'fade') {
-        const d = fadeDuration(previous, clips[i])
+      if (previous.transitionAfter !== 'none') {
+        const d = transitionDuration(previous, clips[i])
         const offset = cursor - d
-        filters.push(`[${videoLabel}][${i}:v]xfade=transition=fade:duration=${d.toFixed(3)}:offset=${offset.toFixed(3)}[v${i}]`)
+        filters.push(`[${videoLabel}][${i}:v]xfade=transition=${previous.transitionAfter}:duration=${d.toFixed(3)}:offset=${offset.toFixed(3)}[v${i}]`)
         filters.push(`[${audioLabel}][${i}:a]acrossfade=d=${d.toFixed(3)}:c1=tri:c2=tri[a${i}]`)
         cursor += clips[i].duration - d
       } else {

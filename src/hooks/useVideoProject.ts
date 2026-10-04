@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CustomAudio, MusicId, Resolution, Subtitle, VideoClip } from '../types'
+import { TRANSITION_ORDER } from '../utils'
 import { projectDuration } from '../utils'
 
 const ACCEPTED = ['video/mp4', 'video/quicktime', 'video/webm']
@@ -111,7 +112,11 @@ export function useVideoProject() {
     return next
   }), [])
 
-  const toggleTransition = useCallback((id: string) => setClips(current => current.map(c => c.id === id ? { ...c, transitionAfter: c.transitionAfter === 'fade' ? 'none' : 'fade' } : c)), [])
+  const cycleTransition = useCallback((id: string) => setClips(current => current.map(c => {
+    if (c.id !== id) return c
+    const next = TRANSITION_ORDER[(TRANSITION_ORDER.indexOf(c.transitionAfter) + 1) % TRANSITION_ORDER.length]
+    return { ...c, transitionAfter: next }
+  })), [])
 
   const addSubtitle = useCallback((startTime: number, projectLength: number) => {
     const safeStart = Math.max(0, Math.min(startTime, Math.max(0, projectLength - .2)))
@@ -169,5 +174,5 @@ export function useVideoProject() {
   const totalSize = useMemo(() => clips.reduce((n, c) => n + c.size, 0), [clips])
   const duration = useMemo(() => projectDuration(clips), [clips])
 
-  return { clips, subtitles, addSubtitle, updateSubtitle, removeSubtitle, music, setMusic, customAudio, setCustomAudioFile, clearCustomAudio, musicVolume, setMusicVolume, videoVolume, setVideoVolume, resolution, setResolution, isImporting, error, setError, addFiles, removeClip, moveClip, toggleTransition, loadDemo, totalSize, duration }
+  return { clips, subtitles, addSubtitle, updateSubtitle, removeSubtitle, music, setMusic, customAudio, setCustomAudioFile, clearCustomAudio, musicVolume, setMusicVolume, videoVolume, setVideoVolume, resolution, setResolution, isImporting, error, setError, addFiles, removeClip, moveClip, cycleTransition, loadDemo, totalSize, duration }
 }

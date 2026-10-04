@@ -1,4 +1,4 @@
-export type TransitionType = 'none' | 'fade'
+export type TransitionType = 'none' | 'fade' | 'fadeblack' | 'fadewhite' | 'wipeleft' | 'slideleft'
 
 export interface VideoClip {
   id: string

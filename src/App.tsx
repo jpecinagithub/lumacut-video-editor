@@ -162,7 +162,7 @@ export default function App() {
         <div className="local-badge"><ShieldCheck /><span><b>Browser-only editing</b>No uploads. No waiting for servers.</span></div>
       </aside>
 
-      <Timeline clips={project.clips} subtitles={project.subtitles} playhead={playhead} onSeek={seek} onMove={project.moveClip} onDelete={project.removeClip} onCycleTransition={project.cycleTransition} onAdd={() => fileInput.current?.click()} />
+      <Timeline clips={project.clips} subtitles={project.subtitles} playhead={playhead} onSeek={seek} onMove={project.moveClip} onDelete={project.removeClip} onSelectTransition={project.setTransition} onAdd={() => fileInput.current?.click()} />
       <input ref={fileInput} hidden type="file" multiple accept="video/mp4,video/quicktime,video/webm,.mov" onChange={e => e.target.files && project.addFiles(Array.from(e.target.files))} />
     </div>}
 

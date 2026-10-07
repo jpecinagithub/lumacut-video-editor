@@ -129,7 +129,7 @@ export default function App() {
     </header>
 
     {!project.clips.length ? <div className="empty-shell">
-      <VideoUploader onFiles={project.addFiles} loading={project.isImporting} onDemo={project.loadDemo} />
+      <VideoUploader onFiles={project.addFiles} loading={project.isImporting} note={project.busyNote} onDemo={project.loadDemo} />
       {project.error && <div className="notice error">{project.error}</div>}
       <div className="privacy-note"><ShieldCheck /><span><b>Private by design</b>Your media stays on this device.</span><a className="codehype-badge" href="https://codehype.ai/product/lumacut?utm_source=codehype_badge" target="_blank" rel="noopener noreferrer" title="Featured on CodeHype"><img src="https://codehype.ai/badges/lumacut.svg?variant=find-us&v=20" alt="Featured on CodeHype" width="180" height="65" loading="lazy" decoding="async" /></a></div>
     </div> : <div className="workspace">
@@ -163,7 +163,7 @@ export default function App() {
       </aside>
 
       <Timeline clips={project.clips} subtitles={project.subtitles} playhead={playhead} onSeek={seek} onMove={project.moveClip} onDelete={project.removeClip} onSelectTransition={project.setTransition} onAdd={() => fileInput.current?.click()} />
-      <input ref={fileInput} hidden type="file" multiple accept="video/mp4,video/quicktime,video/webm,.mov" onChange={e => e.target.files && project.addFiles(Array.from(e.target.files))} />
+      <input ref={fileInput} hidden type="file" multiple accept="video/mp4,video/quicktime,video/webm,video/x-matroska,.mov,.mkv" onChange={e => e.target.files && project.addFiles(Array.from(e.target.files))} />
     </div>}
 
     {(large || project.error) && <div className={`toast ${project.error ? 'error' : ''}`}><b>{project.error ? 'Import issue' : 'Large project'}</b><span>{project.error ?? 'Processing large videos in your browser may require significant memory and can take longer.'}</span><button onClick={() => project.setError(null)}>×</button></div>}

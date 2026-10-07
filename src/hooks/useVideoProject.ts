@@ -1,34 +1,67 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CustomAudio, MusicId, Resolution, Subtitle, TransitionType, VideoClip } from '../types'
 import { projectDuration } from '../utils'
+import { convertMkvToMp4 } from '../services/ffmpeg'
 
-const ACCEPTED = ['video/mp4', 'video/quicktime', 'video/webm']
+const ACCEPTED = ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-matroska']
+const VIDEO_EXT = /\.(mp4|mov|webm|mkv)$/i
 
 async function readClip(file: File): Promise<VideoClip> {
-  if (!ACCEPTED.includes(file.type) && !/\.(mp4|mov|webm)$/i.test(file.name)) throw new Error(`${file.name} is not a supported video.`)
+  if (!ACCEPTED.includes(file.type) && !VIDEO_EXT.test(file.name)) throw new Error(`${file.name} is not a supported video.`)
   const url = URL.createObjectURL(file)
-  const video = document.createElement('video')
-  video.preload = 'metadata'
-  video.muted = true
-  video.src = url
-  await new Promise<void>((resolve, reject) => {
-    video.onloadedmetadata = () => resolve()
-    video.onerror = () => reject(new Error(`${file.name} could not be decoded.`))
-  })
-  const seekTo = Math.min(Math.max(video.duration * 0.18, 0.05), Math.max(0.05, video.duration - 0.05))
-  video.currentTime = seekTo
-  await new Promise<void>((resolve) => { video.onseeked = () => resolve() })
-  const canvas = document.createElement('canvas')
-  canvas.width = 420
-  canvas.height = 236
-  const ctx = canvas.getContext('2d')!
-  ctx.fillStyle = '#15161a'
-  ctx.fillRect(0, 0, canvas.width, canvas.height)
-  const scale = Math.min(canvas.width / video.videoWidth, canvas.height / video.videoHeight)
-  const w = video.videoWidth * scale
-  const h = video.videoHeight * scale
-  ctx.drawImage(video, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h)
-  return { id: crypto.randomUUID(), file, name: file.name, url, duration: video.duration, thumbnail: canvas.toDataURL('image/jpeg', .78), size: file.size, transitionAfter: 'none' }
+  try {
+    const video = document.createElement('video')
+    video.preload = 'metadata'
+    video.muted = true
+    video.src = url
+    await new Promise<void>((resolve, reject) => {
+      video.onloadedmetadata = () => resolve()
+      video.onerror = () => reject(new Error(`${file.name} could not be decoded.`))
+    })
+    const seekTo = Math.min(Math.max(video.duration * 0.18, 0.05), Math.max(0.05, video.duration - 0.05))
+    video.currentTime = seekTo
+    await new Promise<void>((resolve) => { video.onseeked = () => resolve() })
+    const canvas = document.createElement('canvas')
+    canvas.width = 420
+    canvas.height = 236
+    const ctx = canvas.getContext('2d')!
+    ctx.fillStyle = '#15161a'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    const scale = Math.min(canvas.width / video.videoWidth, canvas.height / video.videoHeight)
+    const w = video.videoWidth * scale
+    const h = video.videoHeight * scale
+    ctx.drawImage(video, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h)
+    return { id: crypto.randomUUID(), file, name: file.name, url, duration: video.duration, thumbnail: canvas.toDataURL('image/jpeg', .78), size: file.size, transitionAfter: 'none' }
+  } catch (error) {
+    URL.revokeObjectURL(url)
+    throw error
+  }
+}
+
+/**
+ * Read a clip, falling back to MKV→MP4 conversion when the browser
+ * cannot play the file natively (e.g. Safari, exotic codecs).
+ * Tries a fast remux first, then a full re-encode, verifying after
+ * each step that the result actually plays.
+ */
+async function readClipWithFallback(file: File, onConvert: (note: string) => void): Promise<VideoClip> {
+  try {
+    return await readClip(file)
+  } catch (error) {
+    if (!/\.mkv$/i.test(file.name)) throw error
+    const attempts: Array<{ mode: 'remux' | 'reencode'; note: string }> = [
+      { mode: 'remux', note: `Converting ${file.name} for compatibility…` },
+      { mode: 'reencode', note: `Re-encoding ${file.name} (this can take a while)…` },
+    ]
+    for (const { mode, note } of attempts) {
+      try {
+        onConvert(note)
+        const converted = await convertMkvToMp4(file, mode)
+        return await readClip(converted)
+      } catch { /* try the next, more thorough mode */ }
+    }
+    throw new Error(`${file.name} could not be imported, even after conversion.`)
+  }
 }
 
 async function makeDemoClip(label: string, color: string, accent: string, index: number) {
@@ -77,6 +110,7 @@ export function useVideoProject() {
   const [subtitles, setSubtitles] = useState<Subtitle[]>([])
   const [customAudio, setCustomAudio] = useState<CustomAudio | null>(null)
   const [isImporting, setIsImporting] = useState(false)
+  const [busyNote, setBusyNote] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const clipsRef = useRef(clips)
   clipsRef.current = clips
@@ -89,13 +123,13 @@ export function useVideoProject() {
   }, [])
 
   const addFiles = useCallback(async (files: File[]) => {
-    setIsImporting(true); setError(null)
+    setIsImporting(true); setError(null); setBusyNote(null)
     try {
       const results: VideoClip[] = []
-      for (const file of files) results.push(await readClip(file))
+      for (const file of files) results.push(await readClipWithFallback(file, (note) => setBusyNote(note)))
       setClips(current => [...current, ...results])
     } catch (e) { setError(e instanceof Error ? e.message : 'The video could not be imported.') }
-    finally { setIsImporting(false) }
+    finally { setIsImporting(false); setBusyNote(null) }
   }, [])
 
   const removeClip = useCallback((id: string) => setClips(current => {
@@ -170,5 +204,5 @@ export function useVideoProject() {
   const totalSize = useMemo(() => clips.reduce((n, c) => n + c.size, 0), [clips])
   const duration = useMemo(() => projectDuration(clips), [clips])
 
-  return { clips, subtitles, addSubtitle, updateSubtitle, removeSubtitle, music, setMusic, customAudio, setCustomAudioFile, clearCustomAudio, musicVolume, setMusicVolume, videoVolume, setVideoVolume, resolution, setResolution, isImporting, error, setError, addFiles, removeClip, moveClip, setTransition, loadDemo, totalSize, duration }
+  return { clips, subtitles, addSubtitle, updateSubtitle, removeSubtitle, music, setMusic, customAudio, setCustomAudioFile, clearCustomAudio, musicVolume, setMusicVolume, videoVolume, setVideoVolume, resolution, setResolution, isImporting, busyNote, error, setError, addFiles, removeClip, moveClip, setTransition, loadDemo, totalSize, duration }
 }

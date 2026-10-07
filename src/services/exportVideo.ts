@@ -1,19 +1,7 @@
-import { FFmpeg } from '@ffmpeg/ffmpeg'
-import { fetchFile, toBlobURL } from '@ffmpeg/util'
+import { fetchFile } from '@ffmpeg/util'
 import type { MusicId, Resolution, Subtitle, VideoClip, ExportPhase } from '../types'
 import { projectDuration, transitionDuration } from '../utils'
-
-let instance: FFmpeg | null = null
-
-async function getFFmpeg(onProgress: (value: number) => void) {
-  if (!instance) instance = new FFmpeg()
-  instance.on('progress', ({ progress }) => onProgress(Math.max(0, Math.min(1, progress))))
-  if (!instance.loaded) {
-    const base = 'https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm'
-    await instance.load({ coreURL: await toBlobURL(`${base}/ffmpeg-core.js`, 'text/javascript'), wasmURL: await toBlobURL(`${base}/ffmpeg-core.wasm`, 'application/wasm') })
-  }
-  return instance
-}
+import { getFFmpeg } from './ffmpeg'
 
 const safeName = (index: number, file: File) => `input-${index}.${file.name.split('.').pop()?.toLowerCase() || 'mp4'}`
 

@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CustomAudio, MusicId, Resolution, Subtitle, TransitionType, VideoClip } from '../types'
-import { projectDuration } from '../utils'
+import { clipStartTimes, effectiveDuration, projectDuration } from '../utils'
 import { convertMkvToMp4 } from '../services/ffmpeg'
+
+const MIN_KEEP = 0.5
 
 const ACCEPTED = ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-matroska']
 const VIDEO_EXT = /\.(mp4|mov|webm|mkv)$/i
@@ -31,7 +33,7 @@ async function readClip(file: File): Promise<VideoClip> {
     const w = video.videoWidth * scale
     const h = video.videoHeight * scale
     ctx.drawImage(video, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h)
-    return { id: crypto.randomUUID(), file, name: file.name, url, duration: video.duration, thumbnail: canvas.toDataURL('image/jpeg', .78), size: file.size, transitionAfter: 'none' }
+    return { id: crypto.randomUUID(), file, name: file.name, url, duration: video.duration, trimStart: 0, trimEnd: video.duration, thumbnail: canvas.toDataURL('image/jpeg', .78), size: file.size, transitionAfter: 'none' }
   } catch (error) {
     URL.revokeObjectURL(url)
     throw error
@@ -148,6 +150,40 @@ export function useVideoProject() {
   const setTransition = useCallback((id: string, type: TransitionType) =>
     setClips(current => current.map(c => (c.id === id ? { ...c, transitionAfter: type } : c))), [])
 
+  /**
+   * Non-destructive trim: only narrows the kept [trimStart, trimEnd] window.
+   * Subtitles positioned after the clip's new end shift with the timeline.
+   */
+  const setTrimBounds = useCallback((id: string, start: number, end: number) => {
+    const index = clips.findIndex(c => c.id === id)
+    if (index === -1) return false
+    const clip = clips[index]
+    const newStart = Math.max(0, Math.min(start, clip.duration - MIN_KEEP))
+    const newEnd = Math.min(clip.duration, Math.max(end, newStart + MIN_KEEP))
+    const oldEff = effectiveDuration(clip)
+    const newEff = newEnd - newStart
+    const delta = oldEff - newEff
+    if (Math.abs(delta) < 1e-6) return false
+    setClips(prev => prev.map(c => c.id === id ? { ...c, trimStart: newStart, trimEnd: newEnd } : c))
+    const boundary = clipStartTimes(clips)[index] + Math.min(oldEff, newEff)
+    setSubtitles(prev => prev.map(s => s.startTime >= boundary - 1e-6
+      ? { ...s, startTime: Math.max(0, s.startTime - delta), endTime: Math.max(0.1, s.endTime - delta) }
+      : s))
+    return true
+  }, [clips])
+
+  const trimClip = useCallback((id: string, cutTime: number, keep: 'left' | 'right') => {
+    const clip = clips.find(c => c.id === id)
+    if (!clip) return false
+    return keep === 'left' ? setTrimBounds(id, clip.trimStart, cutTime) : setTrimBounds(id, cutTime, clip.trimEnd)
+  }, [clips, setTrimBounds])
+
+  const resetTrim = useCallback((id: string) => {
+    const clip = clips.find(c => c.id === id)
+    if (!clip) return false
+    return setTrimBounds(id, 0, clip.duration)
+  }, [clips, setTrimBounds])
+
   const addSubtitle = useCallback((startTime: number, projectLength: number) => {
     const safeStart = Math.max(0, Math.min(startTime, Math.max(0, projectLength - .2)))
     const subtitle: Subtitle = {
@@ -204,5 +240,5 @@ export function useVideoProject() {
   const totalSize = useMemo(() => clips.reduce((n, c) => n + c.size, 0), [clips])
   const duration = useMemo(() => projectDuration(clips), [clips])
 
-  return { clips, subtitles, addSubtitle, updateSubtitle, removeSubtitle, music, setMusic, customAudio, setCustomAudioFile, clearCustomAudio, musicVolume, setMusicVolume, videoVolume, setVideoVolume, resolution, setResolution, isImporting, busyNote, error, setError, addFiles, removeClip, moveClip, setTransition, loadDemo, totalSize, duration }
+  return { clips, subtitles, addSubtitle, updateSubtitle, removeSubtitle, music, setMusic, customAudio, setCustomAudioFile, clearCustomAudio, musicVolume, setMusicVolume, videoVolume, setVideoVolume, resolution, setResolution, isImporting, busyNote, error, setError, addFiles, removeClip, moveClip, setTransition, trimClip, resetTrim, loadDemo, totalSize, duration }
 }

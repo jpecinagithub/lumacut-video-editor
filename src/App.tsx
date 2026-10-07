@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { ArrowUpRight, Film, Mail, RotateCcw, ShieldCheck, SkipBack, UserRound, Volume2, VolumeX } from 'lucide-react'
 import { VideoUploader } from './components/VideoUploader'
 import { Timeline } from './components/Timeline'
+import { TrimModal } from './components/TrimModal'
 import { MusicPanel, tracks } from './components/MusicPanel'
 import { SubtitlePanel } from './components/SubtitlePanel'
 import { ExportModal } from './components/ExportModal'
 import { useVideoProject } from './hooks/useVideoProject'
 import { useIsMobile } from './hooks/useIsMobile'
-import { clipStartTimes, formatTime, friendlyError, projectDuration } from './utils'
+import { clipStartTimes, effectiveDuration, formatTime, friendlyError, projectDuration } from './utils'
 import { exportVideo } from './services/exportVideo'
 import type { ExportPhase } from './types'
 
@@ -22,6 +23,7 @@ export default function App() {
   const [playing, setPlaying] = useState(false)
   const [playerMuted, setPlayerMuted] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
+  const [trimClipId, setTrimClipId] = useState<string | null>(null)
   const [exportPhase, setExportPhase] = useState<ExportPhase>('idle')
   const [exportProgress, setExportProgress] = useState(0)
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
@@ -37,12 +39,12 @@ export default function App() {
   const total = projectDuration(project.clips)
   const starts = clipStartTimes(project.clips)
 
-  const activeIndex = Math.max(0, project.clips.findIndex((clip, index) => playhead >= starts[index] && playhead < starts[index] + clip.duration))
+  const activeIndex = Math.max(0, project.clips.findIndex((clip, index) => playhead >= starts[index] && playhead < starts[index] + effectiveDuration(clip)))
   const active = project.clips[activeIndex]
   const next = project.clips[activeIndex + 1]
   const localTime = active ? Math.max(0, playhead - starts[activeIndex]) : 0
-  const fadeLength = active && next && active.transitionAfter === 'fade' ? Math.min(3, active.duration / 2, next.duration / 2) : 0
-  const fadeProgress = fadeLength ? Math.max(0, Math.min(1, (localTime - (active.duration - fadeLength)) / fadeLength)) : 0
+  const fadeLength = active && next && active.transitionAfter === 'fade' ? Math.min(3, effectiveDuration(active) / 2, effectiveDuration(next) / 2) : 0
+  const fadeProgress = fadeLength ? Math.max(0, Math.min(1, (localTime - (effectiveDuration(active) - fadeLength)) / fadeLength)) : 0
   const activeSubtitle = project.subtitles.find(subtitle => subtitle.text.trim() && playhead >= subtitle.startTime && playhead < subtitle.endTime)
 
   useEffect(() => {
@@ -52,8 +54,8 @@ export default function App() {
       el.volume = playerMuted ? 0 : project.videoVolume / 100
       if (shouldPlay) el.play().catch(() => undefined); else el.pause()
     }
-    sync(videoA.current, localTime, playing)
-    if (next && fadeProgress > 0) sync(videoB.current, Math.max(0, playhead - starts[activeIndex + 1]), playing)
+    sync(videoA.current, localTime + (active?.trimStart ?? 0), playing)
+    if (next && fadeProgress > 0) sync(videoB.current, Math.max(0, playhead - starts[activeIndex + 1]) + next.trimStart, playing)
   }, [active?.id, next?.id, localTime, playing, fadeProgress, playerMuted, project.videoVolume, starts, activeIndex, playhead])
 
   useEffect(() => {
@@ -162,11 +164,14 @@ export default function App() {
         <div className="local-badge"><ShieldCheck /><span><b>Browser-only editing</b>No uploads. No waiting for servers.</span></div>
       </aside>
 
-      <Timeline clips={project.clips} subtitles={project.subtitles} playhead={playhead} onSeek={seek} onMove={project.moveClip} onDelete={project.removeClip} onSelectTransition={project.setTransition} onAdd={() => fileInput.current?.click()} />
+      <Timeline clips={project.clips} subtitles={project.subtitles} playhead={playhead} onSeek={seek} onMove={project.moveClip} onDelete={project.removeClip} onTrim={setTrimClipId} onSelectTransition={project.setTransition} onAdd={() => fileInput.current?.click()} />
       <input ref={fileInput} hidden type="file" multiple accept="video/mp4,video/quicktime,video/webm,video/x-matroska,.mov,.mkv" onChange={e => e.target.files && project.addFiles(Array.from(e.target.files))} />
     </div>}
 
     {(large || project.error) && <div className={`toast ${project.error ? 'error' : ''}`}><b>{project.error ? 'Import issue' : 'Large project'}</b><span>{project.error ?? 'Processing large videos in your browser may require significant memory and can take longer.'}</span><button onClick={() => project.setError(null)}>×</button></div>}
     <ExportModal open={exportOpen} onClose={() => setExportOpen(false)} resolution={project.resolution} setResolution={project.setResolution} phase={exportPhase} progress={exportProgress} onExport={startExport} downloadUrl={downloadUrl} onReset={resetProject} error={exportError} isMobile={isMobile} />
+    {(() => { const tc = project.clips.find(c => c.id === trimClipId); return tc
+      ? <TrimModal clip={tc} onClose={() => setTrimClipId(null)} onTrim={(t, k) => project.trimClip(tc.id, t, k)} onReset={() => project.resetTrim(tc.id)} />
+      : null })()}
   </main>
 }

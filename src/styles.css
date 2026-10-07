@@ -78,3 +78,22 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
   .resolution-grid { grid-template-columns: 1fr; }
   .toast { bottom: 16px; }
 }
+
+.clip-trim { position: absolute; z-index: 3; right: 36px; top: 6px; width: 24px; height: 24px; border: 0; border-radius: 6px; background: #0b0c0fbb; display: grid; place-items: center; cursor: pointer; opacity: 0; transition: .15s; }
+.clip-card:hover .clip-trim { opacity: 1; }
+.clip-trim svg { width: 12px; }
+.clip-card.trimmed { border-color: var(--accent); }
+.trim-modal { width: min(560px, 100%); }
+.trim-preview { width: 100%; max-height: 300px; border-radius: 12px; background: #000; margin-top: 16px; display: block; }
+.trim-bar { position: relative; height: 10px; border-radius: 6px; background: #26282e; margin: 18px 0 6px; }
+.trim-kept { position: absolute; top: 0; bottom: 0; border-radius: 6px; background: #d9ff4326; border: 1px solid var(--accent); }
+.trim-cut { position: absolute; top: -4px; bottom: -4px; width: 2px; background: #fff; transform: translateX(-50%); box-shadow: 0 0 6px #000; pointer-events: none; }
+.trim-slider { width: 100%; accent-color: var(--accent); margin: 4px 0 8px; cursor: pointer; }
+.trim-times { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 12px; color: #9699a2; margin-bottom: 18px; }
+.trim-times b { color: #d8d9dc; font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; }
+.trim-actions { display: flex; gap: 10px; }
+.trim-actions .button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.trim-actions .button svg { width: 14px; }
+.trim-foot { margin-top: 16px; text-align: center; color: #777a82; font-size: 12px; }
+.trim-foot .text-button { margin-top: 0; display: inline-flex; align-items: center; gap: 6px; }
+.trim-foot .text-button svg { width: 12px; }

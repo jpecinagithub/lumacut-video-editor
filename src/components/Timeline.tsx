@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
-import { Captions, Check, GripVertical, Plus, Trash2, WandSparkles } from 'lucide-react'
+import { Captions, Check, GripVertical, Plus, Scissors, Trash2, WandSparkles } from 'lucide-react'
 import type { Subtitle, TransitionType, VideoClip } from '../types'
-import { clipStartTimes, formatTime, projectDuration, TRANSITION_LABELS, TRANSITION_ORDER, transitionDuration } from '../utils'
+import { clipStartTimes, effectiveDuration, formatTime, projectDuration, TRANSITION_LABELS, TRANSITION_ORDER, transitionDuration } from '../utils'
 
-interface Props { clips: VideoClip[]; subtitles: Subtitle[]; playhead: number; onSeek: (time: number) => void; onMove: (from: number, to: number) => void; onDelete: (id: string) => void; onSelectTransition: (id: string, type: TransitionType) => void; onAdd: () => void }
+interface Props { clips: VideoClip[]; subtitles: Subtitle[]; playhead: number; onSeek: (time: number) => void; onMove: (from: number, to: number) => void; onDelete: (id: string) => void; onTrim: (id: string) => void; onSelectTransition: (id: string, type: TransitionType) => void; onAdd: () => void }
 
-export function Timeline({ clips, subtitles, playhead, onSeek, onMove, onDelete, onSelectTransition, onAdd }: Props) {
+export function Timeline({ clips, subtitles, playhead, onSeek, onMove, onDelete, onTrim, onSelectTransition, onAdd }: Props) {
   const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null)
   const [menuId, setMenuId] = useState<string | null>(null)
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0 })
   const [menuAbove, setMenuAbove] = useState(false)
@@ -53,12 +54,16 @@ export function Timeline({ clips, subtitles, playhead, onSeek, onMove, onDelete,
         <div className="time-ruler"><span>00:00</span><span>{formatTime(total / 2)}</span><span>{formatTime(total)}</span></div>
         <div className="timeline-body" onClick={timelineClick}>
           <div className="clips-row">
-            {clips.map((clip, index) => <article key={clip.id} className={`clip-card ${dragIndex === index ? 'is-dragging' : ''}`} style={{ left: `${total ? starts[index] / total * 100 : 0}%`, width: `${total ? clip.duration / total * 100 : 0}%`, zIndex: index + 1 }} draggable onDragStart={() => setDragIndex(index)} onDragOver={e => e.preventDefault()} onDrop={() => { if (dragIndex !== null && dragIndex !== index) onMove(dragIndex, index); setDragIndex(null) }} onDragEnd={() => setDragIndex(null)}>
+            {clips.map((clip, index) => {
+              const eff = effectiveDuration(clip)
+              const trimmed = clip.trimStart > 1e-6 || clip.trimEnd < clip.duration - 1e-6
+              return <article key={clip.id} className={`clip-card ${dragIndex === index ? 'is-dragging' : ''} ${trimmed ? 'trimmed' : ''}`} style={{ left: `${total ? starts[index] / total * 100 : 0}%`, width: `${total ? eff / total * 100 : 0}%`, zIndex: hoverIndex === index ? 50 : index + 1 }} draggable onMouseEnter={() => setHoverIndex(index)} onMouseLeave={() => setHoverIndex(null)} onDragStart={() => setDragIndex(index)} onDragOver={e => e.preventDefault()} onDrop={() => { if (dragIndex !== null && dragIndex !== index) onMove(dragIndex, index); setDragIndex(null) }} onDragEnd={() => setDragIndex(null)}>
               <img src={clip.thumbnail} alt="" />
               <span className="clip-drag"><GripVertical /></span>
+              <button className="clip-trim" title={`Trim ${clip.name}`} onClick={() => onTrim(clip.id)}><Scissors /></button>
               <button className="clip-delete" title={`Delete ${clip.name}`} onClick={() => onDelete(clip.id)}><Trash2 /></button>
-              <div className="clip-meta"><strong>{clip.name.replace(/\.[^.]+$/, '')}</strong><span>{formatTime(clip.duration)}</span></div>
-            </article>)}
+              <div className="clip-meta"><strong>{clip.name.replace(/\.[^.]+$/, '')}</strong><span>{formatTime(eff)}</span></div>
+            </article>})}
             {clips.slice(0, -1).map((clip, index) => {
               const type = clip.transitionAfter
               const d = type === 'none' ? 0 : transitionDuration(clip, clips[index + 1])

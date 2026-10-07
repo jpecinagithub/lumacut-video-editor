@@ -6,6 +6,8 @@ export interface VideoClip {
   name: string
   url: string
   duration: number
+  trimStart: number
+  trimEnd: number
   thumbnail: string
   size: number
   transitionAfter: TransitionType

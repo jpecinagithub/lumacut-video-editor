@@ -21,18 +21,21 @@ export const TRANSITION_LABELS: Record<Exclude<TransitionType, 'none'>, string> 
   slideleft: 'Slide',
 }
 
+/** Duration of the kept portion of a clip after trimming. */
+export const effectiveDuration = (clip: VideoClip) => Math.max(0, clip.trimEnd - clip.trimStart)
+
 export const transitionDuration = (a: VideoClip, b: VideoClip) =>
-  Math.min(2, Math.max(0.15, a.duration / 2), Math.max(0.15, b.duration / 2))
+  Math.min(2, Math.max(0.15, effectiveDuration(a) / 2), Math.max(0.15, effectiveDuration(b) / 2))
 
 export function projectDuration(clips: VideoClip[]) {
-  return Math.max(0, clips.reduce((sum, clip) => sum + clip.duration, 0) - clips.slice(0, -1).reduce((sum, clip, index) => sum + (clip.transitionAfter === 'none' ? 0 : transitionDuration(clip, clips[index + 1])), 0))
+  return Math.max(0, clips.reduce((sum, clip) => sum + effectiveDuration(clip), 0) - clips.slice(0, -1).reduce((sum, clip, index) => sum + (clip.transitionAfter === 'none' ? 0 : transitionDuration(clip, clips[index + 1])), 0))
 }
 
 export function clipStartTimes(clips: VideoClip[]) {
   let cursor = 0
   return clips.map((clip, index) => {
     const start = cursor
-    cursor += clip.duration
+    cursor += effectiveDuration(clip)
     if (clip.transitionAfter !== 'none' && clips[index + 1]) cursor -= transitionDuration(clip, clips[index + 1])
     return start
   })

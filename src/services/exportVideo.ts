@@ -2,6 +2,7 @@ import { fetchFile } from '@ffmpeg/util'
 import type { MusicId, Resolution, Subtitle, VideoClip, ExportPhase } from '../types'
 import { projectDuration, transitionDuration } from '../utils'
 import { getFFmpeg } from './ffmpeg'
+import { effectiveDuration } from '../utils'
 
 const safeName = (index: number, file: File) => `input-${index}.${file.name.split('.').pop()?.toLowerCase() || 'mp4'}`
 
@@ -63,7 +64,8 @@ export async function exportVideo(options: { clips: VideoClip[]; subtitles: Subt
       const output = `normal-${i}.mp4`
       tempFiles.push(input, output)
       await ffmpeg.writeFile(input, await fetchFile(clips[i].file))
-      const d = clips[i].duration.toFixed(3)
+      const d = effectiveDuration(clips[i]).toFixed(3)
+      const ss = clips[i].trimStart.toFixed(3)
       const videoFilter = `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black,fps=30,setsar=1,format=yuv420p`
       let hasAudio = false
       const listener = ({ message }: { message: string }) => { if (/Audio:/.test(message)) hasAudio = true }
@@ -71,15 +73,15 @@ export async function exportVideo(options: { clips: VideoClip[]; subtitles: Subt
       try { await ffmpeg.exec(['-i', input, '-hide_banner']) } catch { /* probing exits non-zero */ }
       ffmpeg.off('log', listener)
       const args = hasAudio
-        ? ['-i', input, '-filter_complex', `[0:v]${videoFilter}[v];[0:a]aresample=48000,volume=${videoVolume / 100}[a]`, '-map', '[v]', '-map', '[a]', '-t', d, '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '24', '-c:a', 'aac', '-b:a', '160k', output]
-        : ['-i', input, '-f', 'lavfi', '-t', d, '-i', 'anullsrc=channel_layout=stereo:sample_rate=48000', '-filter_complex', `[0:v]${videoFilter}[v]`, '-map', '[v]', '-map', '1:a', '-t', d, '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '24', '-c:a', 'aac', '-b:a', '160k', output]
+        ? ['-i', input, '-ss', ss, '-filter_complex', `[0:v]${videoFilter}[v];[0:a]aresample=48000,volume=${videoVolume / 100}[a]`, '-map', '[v]', '-map', '[a]', '-t', d, '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '24', '-c:a', 'aac', '-b:a', '160k', output]
+        : ['-i', input, '-ss', ss, '-f', 'lavfi', '-t', d, '-i', 'anullsrc=channel_layout=stereo:sample_rate=48000', '-filter_complex', `[0:v]${videoFilter}[v]`, '-map', '[v]', '-map', '1:a', '-t', d, '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '24', '-c:a', 'aac', '-b:a', '160k', output]
       const code = await ffmpeg.exec(args)
       if (code !== 0) throw new Error(`Failed to normalize ${clips[i].name}`)
     }
 
     onUpdate('transitions', 44)
     const joinArgs = clips.flatMap((_, i) => ['-i', `normal-${i}.mp4`])
-    let videoLabel = '0:v', audioLabel = '0:a', cursor = clips[0].duration
+    let videoLabel = '0:v', audioLabel = '0:a', cursor = effectiveDuration(clips[0])
     const filters: string[] = []
     for (let i = 1; i < clips.length; i++) {
       const previous = clips[i - 1]
@@ -88,10 +90,10 @@ export async function exportVideo(options: { clips: VideoClip[]; subtitles: Subt
         const offset = cursor - d
         filters.push(`[${videoLabel}][${i}:v]xfade=transition=${previous.transitionAfter}:duration=${d.toFixed(3)}:offset=${offset.toFixed(3)}[v${i}]`)
         filters.push(`[${audioLabel}][${i}:a]acrossfade=d=${d.toFixed(3)}:c1=tri:c2=tri[a${i}]`)
-        cursor += clips[i].duration - d
+        cursor += effectiveDuration(clips[i]) - d
       } else {
         filters.push(`[${videoLabel}][${audioLabel}][${i}:v][${i}:a]concat=n=2:v=1:a=1[v${i}][a${i}]`)
-        cursor += clips[i].duration
+        cursor += effectiveDuration(clips[i])
       }
       videoLabel = `v${i}`; audioLabel = `a${i}`
     }

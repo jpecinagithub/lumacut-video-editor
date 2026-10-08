@@ -147,7 +147,13 @@ export async function exportVideo(options: { clips: VideoClip[]; subtitles: Subt
       finalFile = output
     }
     onUpdate('finalizing', 94)
-    const data = await ffmpeg.readFile(finalFile)
+    // Move the moov atom to the start of the file so it streams correctly
+    // in WhatsApp, browsers and social apps (faststart). Stream copy: fast, lossless.
+    const streamable = 'streamable.mp4'
+    tempFiles.push(streamable)
+    const faststartCode = await ffmpeg.exec(['-i', finalFile, '-c', 'copy', '-movflags', '+faststart', '-y', streamable])
+    if (faststartCode !== 0) throw new Error('Could not finalize the video file')
+    const data = await ffmpeg.readFile(streamable)
     onUpdate('done', 100)
     return URL.createObjectURL(new Blob([data instanceof Uint8Array ? data : new TextEncoder().encode(data)], { type: 'video/mp4' }))
   } finally {
